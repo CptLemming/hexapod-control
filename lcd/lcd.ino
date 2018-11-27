@@ -15,15 +15,16 @@ const unsigned int ECHO_PIN=3;
 #define cSSC_IN        13
 
 PS2X ps2x;
-int error = 0; 
+int error = 0;
 byte type = 0;
 byte vibrate = 0;
 int mode = 0;
 int leg = 0;
 int joint = 0;
-const int modeCount = 2;
+const int modeCount = 3;
 const int legCount = 24;
 const int jointCount = 4;
+int lastValue = 0;
 
 SoftwareSerial SSCSerial(cSSC_IN, cSSC_OUT);
 
@@ -68,6 +69,7 @@ void setup() {
   }
   // Print a message to the LCD.
   lcd.print("Starting!");
+  lastValue = 0;
 
   SSCSerial.begin(cSSC_BAUD);
 
@@ -95,13 +97,14 @@ void loop() {
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print("Mode: "+ String(mode));
+  lcd.print("ModE: "+ String(mode));
 
   lcd.setCursor(0, 1);
 
   ps2x.read_gamepad(false, 0);
 
   if (ps2x.ButtonPressed(PSB_START)) {
+    lastValue = 0;
     if (mode < (modeCount - 1)) {
       mode++;
     } else {
@@ -119,15 +122,19 @@ void loop() {
     }
 
     long pos = map(ps2x.Analog(PSS_LY), 0, 255, 750, 2250);
+
+    if (pos - 50 > lastValue || pos + 50 < lastValue) {
+      lastValue = pos;
   
+      SSCSerial.print("#");
+      SSCSerial.print(leg, DEC);
+      SSCSerial.print("P");
+      SSCSerial.print(pos, DEC);
+      SSCSerial.print("T");
+      SSCSerial.println(500, DEC);
+    }
+
     lcd.print("Leg:"+ String(leg) + " P:"+ String(pos));
-  
-    SSCSerial.print("#");
-    SSCSerial.print(leg, DEC);
-    SSCSerial.print("P");
-    SSCSerial.print(pos, DEC);
-    SSCSerial.print("T");
-    SSCSerial.println(500, DEC);
   } else if (mode == 1) {
     if (ps2x.ButtonPressed(PSB_SELECT)) {
       if (joint < (jointCount - 1)) {
@@ -138,18 +145,78 @@ void loop() {
     }
 
     long pos = map(ps2x.Analog(PSS_LY), 0, 255, 750, 2250);
-    lcd.print("Joint:"+ String(joint) + " P:"+ String(pos));
 
-    for (int i = 0; i < legCount; i++) {
-      if (i % 4 == joint) {
+    if (pos - 50 > lastValue || pos + 50 < lastValue) {
+      lastValue = pos;
+  
+      for (int i = 0; i < legCount; i++) {
+        if (i % 4 == joint) {
+          SSCSerial.print("#");
+          SSCSerial.print(i, DEC);
+          SSCSerial.print("P");
+          SSCSerial.print(pos, DEC);
+        }
+      }
+      SSCSerial.print("T");
+      SSCSerial.println(500, DEC);
+    }
+
+    lcd.print("Joint:"+ String(joint) + " P:"+ String(pos));
+  } else if (mode == 2) {
+    if (ps2x.ButtonPressed(PSB_TRIANGLE)) {
+      for (int i = 0; i < legCount; i++) {
+        if (i < 12) {
+          if (i % 4 == 1) {
+            SSCSerial.print("#");
+            SSCSerial.print(i, DEC);
+            SSCSerial.print("P");
+            SSCSerial.print(1750, DEC);
+          } else if (i % 4 == 2) {
+            SSCSerial.print("#");
+            SSCSerial.print(i, DEC);
+            SSCSerial.print("P");
+            SSCSerial.print(1250, DEC);
+          } else if (i % 4 == 3) {
+            SSCSerial.print("#");
+            SSCSerial.print(i, DEC);
+            SSCSerial.print("P");
+            SSCSerial.print(1700, DEC);
+          }
+        } else {
+          if (i % 4 == 1) {
+            SSCSerial.print("#");
+            SSCSerial.print(i, DEC);
+            SSCSerial.print("P");
+            if (i == 21) {
+              SSCSerial.print(1250, DEC);
+            } else {
+              SSCSerial.print(1750, DEC);
+            }
+          } else if (i % 4 == 2) {
+            SSCSerial.print("#");
+            SSCSerial.print(i, DEC);
+            SSCSerial.print("P");
+            SSCSerial.print(1750, DEC);
+          } else if (i % 4 == 3) {
+            SSCSerial.print("#");
+            SSCSerial.print(i, DEC);
+            SSCSerial.print("P");
+            SSCSerial.print(1300, DEC);
+          }
+        }
+      }
+      SSCSerial.print("T");
+      SSCSerial.println(1000, DEC);
+    } else if (ps2x.ButtonPressed(PSB_CROSS)) {
+      for (int i = 0; i < legCount; i++) {
         SSCSerial.print("#");
         SSCSerial.print(i, DEC);
         SSCSerial.print("P");
-        SSCSerial.print(pos, DEC);
+        SSCSerial.print(1500, DEC);
       }
+      SSCSerial.print("T");
+      SSCSerial.println(1000, DEC);
     }
-    SSCSerial.print("T");
-    SSCSerial.println(500, DEC);
   }
 
 //  lcd.setCursor(0, 1);
@@ -184,4 +251,3 @@ void loop() {
 
   delay(100);
 }
-
